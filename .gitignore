@@ -1,5 +1,44 @@
-.DS_Store
-*.swp
-*~
+# Build outputs
+bin/
+obj/
+out/
+
+# .NET
+*.user
+*.suo
+*.cache
+*.docstates
+launchSettings.json
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# IDE
+.vs/
 .vscode/
 .idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Secrets
+*.pfx
+*.key
+appsettings.Development.json

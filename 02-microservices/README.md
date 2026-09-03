@@ -1,19 +1,6 @@
-# 02 - Microservices with Saga Pattern
+# Microservices with Saga Pattern
 
-A distributed order processing system demonstrating microservices architecture with the Saga orchestration pattern.
-
-[← Back to Portfolio](../)
-
-## Overview
-
-This project implements a complete microservices architecture with 4 independent services communicating via RabbitMQ. The order creation flow uses the Choreography-based Saga pattern with automatic compensation on failure.
-
-- Saga Pattern (Choreography)
-- Event-Driven Architecture
-- Database Per Service
-- API Gateway (YARP)
-- Idempotent Consumers
-- MassTransit + RabbitMQ
+A production-style .NET 9 microservices architecture demonstrating the Saga orchestration pattern with RabbitMQ messaging and database-per-service isolation.
 
 ## Architecture
 
@@ -34,129 +21,107 @@ This project implements a complete microservices architecture with 4 independent
                     └──────────────┘     └──────────────────┘
 ```
 
-```mermaid
-graph LR
-    subgraph Services
-        PS[Product Service :5001]
-        OS[Order Service :5002]
-        PmS[Payment Service :5003]
-        GW[API Gateway :5000]
-    end
-    
-    subgraph Messaging
-        RMQ[(RabbitMQ)]
-    end
-    
-    Client[React :3000] --> GW
-    GW --> PS
-    GW --> OS
-    GW --> PmS
-    
-    OS -->|OrderCreatedEvent| RMQ
-    RMQ -->|OrderCreatedEvent| PS
-    RMQ -->|OrderCreatedEvent| PmS
-    PS -->|StockReservedEvent| RMQ
-    PmS -->|PaymentProcessedEvent| RMQ
-    RMQ -->|StockReservedEvent| OS
-    RMQ -->|PaymentProcessedEvent| OS
+## Tech Stack
+
+- **Backend:** .NET 9, Minimal APIs, MassTransit, Entity Framework Core
+- **Messaging:** RabbitMQ via MassTransit
+- **Gateway:** YARP Reverse Proxy
+- **Frontend:** React 19, TypeScript, Vite
+- **Database:** SQLite (database-per-service)
+- **Tests:** xUnit, FluentAssertions, Moq
+
+## Features
+
+- **Saga Pattern:** Choreography-based distributed transactions
+- **Database Per Service:** Each service owns its data
+- **Event-Driven:** Asynchronous messaging via RabbitMQ
+- **Idempotency:** Duplicate message detection
+- **Compensation:** Automatic rollback on failure
+- **API Gateway:** Single entry point with YARP
+- **Docker:** Full containerization support
+- **React Frontend:** Product browsing and order creation
+
+## Project Structure
+
+```
+04-dotnet-microservices-grpc-saga/
+├── src/
+│   ├── ApiGateway/          # YARP reverse proxy
+│   ├── ProductService/      # Product catalog & inventory
+│   ├── OrderService/        # Order management & saga orchestrator
+│   ├── PaymentService/      # Payment processing
+│   ├── Shared/              # Cross-cutting concerns
+│   └── Shared.Contracts/    # Events, DTOs, interfaces
+├── tests/
+│   └── SagaTests/           # Saga pattern tests
+├── frontend/                # React application
+├── docs/                    # Architecture documentation
+├── docker-compose.yml
+└── Microservices.sln
 ```
 
-## Saga Flow
+## Quick Start
 
-### Happy Path
-```
-CreateOrder → ReserveStock → ProcessPayment → CompleteOrder
-```
-
-### Compensation Path (Payment Fails)
-```
-CreateOrder → ReserveStock → ProcessPayment (FAIL) → Compensate → ReleaseStock
+### Run with Docker
+```bash
+docker compose up -d
 ```
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant OS as OrderService
-    participant PS as ProductService
-    participant PmS as PaymentService
-    participant RMQ as RabbitMQ
+### Run Locally
+```bash
+# Start services in separate terminals
+dotnet run --project src/ProductService
+dotnet run --project src/OrderService
+dotnet run --project src/PaymentService
+dotnet run --project src/ApiGateway
 
-    C->>OS: POST /api/orders
-    OS->>RMQ: OrderCreatedEvent
-    RMQ->>PS: OrderCreatedEvent
-    RMQ->>PmS: OrderCreatedEvent
-    
-    alt Stock Available
-        PS->>RMQ: StockReservedEvent
-        RMQ->>OS: StockReservedEvent
-        
-        alt Payment Succeeds
-            PmS->>RMQ: PaymentProcessedEvent
-            RMQ->>OS: PaymentProcessedEvent
-            OS->>OS: Order Completed
-        else Payment Fails
-            PmS->>RMQ: PaymentFailedEvent
-            RMQ->>OS: PaymentFailedEvent
-            OS->>RMQ: OrderCompensatedEvent
-            RMQ->>PS: OrderCompensatedEvent
-            PS->>PS: Release Stock
-        end
-    else Stock Unavailable
-        PS->>RMQ: StockReservationFailedEvent
-        RMQ->>OS: StockReservationFailedEvent
-        OS->>OS: Order Failed
-    end
+# Start frontend
+cd frontend && npm install && npm run dev
 ```
 
-## Services
-
-| Service | Port | Responsibility | Database |
-|---------|------|---------------|----------|
-| API Gateway | 5000 | YARP reverse proxy | - |
-| Product Service | 5001 | Catalog & inventory | products.db |
-| Order Service | 5002 | Order management & saga | orders.db |
-| Payment Service | 5003 | Payment processing | payments.db |
-| Frontend | 3000 | React SPA | - |
-| RabbitMQ | 5672 | Message broker | - |
-
-## Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Database per service | Independent deployability, data isolation |
-| Choreography saga | Loose coupling, no single point of failure |
-| MassTransit | Built-in retry, idempotency, consumer model |
-| YARP gateway | Microsoft-supported, high performance |
-| SQLite | Zero config, portable, demo-friendly |
-| Idempotent consumers | Prevents duplicate processing |
+### Run Tests
+```bash
+dotnet test
+```
 
 ## API Endpoints
 
-### Product Service
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/products` | List products |
-| GET | `/api/products/{id}` | Get product |
-| POST | `/api/products` | Create product |
+### Product Service (5001)
+- `GET /api/products` - List products
+- `GET /api/products/{id}` - Get product
+- `POST /api/products` - Create product
+- `GET /api/products/{id}/stock` - Get stock info
 
-### Order Service
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/orders` | List orders |
-| GET | `/api/orders/{id}` | Get order |
-| POST | `/api/orders` | Create order (triggers saga) |
-| GET | `/api/orders/{id}/saga` | Get saga execution logs |
+### Order Service (5002)
+- `GET /api/orders` - List orders
+- `GET /api/orders/{id}` - Get order
+- `POST /api/orders` - Create order
+- `GET /api/orders/{id}/saga` - Get saga logs
 
-## Tech Stack
+### Payment Service (5003)
+- `GET /api/payments` - List payments
+- `GET /api/payments/{id}` - Get payment
 
-- .NET 9, Minimal APIs
-- MassTransit 9 + RabbitMQ
-- Entity Framework Core 9 (SQLite)
-- YARP Reverse Proxy
-- React 19 + TypeScript + Vite
-- Docker + Docker Compose
-- xUnit + FluentAssertions + Moq
+### API Gateway (5000)
+- `GET /health` - Health check
+- Routes to all services
 
-## Source Code
+## Saga Flow
 
-Full implementation: [`04-dotnet-microservices-grpc-saga/`](../../04-dotnet-microservices-grpc-saga/)
+1. **Create Order** → Order created with "Pending" status
+2. **Reserve Stock** → ProductService reserves inventory
+3. **Process Payment** → PaymentService processes payment
+4. **Complete Order** → Order marked as "Completed"
+
+If payment fails:
+1. **Compensate Payment** → Refund payment
+2. **Release Stock** → Release reserved inventory
+3. **Fail Order** → Order marked as "Failed"
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Saga Pattern](docs/saga.md)
+- [Messaging](docs/messaging.md)
+- [Resilience](docs/resilience.md)
+- [ADRs](docs/ADRs.md)

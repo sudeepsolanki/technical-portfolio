@@ -1,8 +1,6 @@
-# 01 - Clean Architecture Product Catalog API
+# Clean Architecture Product Catalog API
 
 A production-style .NET 9 Web API demonstrating Clean Architecture, SOLID principles, and modern engineering practices.
-
-[← Back to Portfolio](../)
 
 ## Overview
 
@@ -38,6 +36,8 @@ frontend/
 
 The Domain layer has **zero** dependencies on infrastructure. Interfaces defined in Domain are implemented by Infrastructure.
 
+### Mermaid Diagram
+
 ```mermaid
 graph TB
     React[React Frontend]
@@ -61,9 +61,9 @@ graph TB
     end
     
     subgraph Infra["Infrastructure Layer"]
-        EFCore[EF Core DbContext]
-        ProductRepo[Product Repository]
-        CategoryRepo[Category Repository]
+        DbContext[AppDbContext]
+        ProductRepo[ProductRepository]
+        CategoryRepo[CategoryRepository]
     end
     
     React --> Controllers
@@ -71,42 +71,167 @@ graph TB
     Controllers --> CategoryService
     ProductService --> IProductRepo
     CategoryService --> ICategoryRepo
-    ProductRepo --> EFCore
-    CategoryRepo --> EFCore
-    EFCore[(SQLite Database)]
+    ProductService --> Validators
+    CategoryService --> Validators
+    ProductRepo --> IProductRepo
+    CategoryRepo --> ICategoryRepo
+    DbContext --> ProductRepo
+    DbContext --> CategoryRepo
+    
+    style Domain fill:#e1f5fe
+    style App fill:#f3e5f5
+    style Infra fill:#e8f5e9
+    style API fill:#fff3e0
 ```
 
-## Key Design Decisions
+## Features
 
-| Decision | Rationale |
-|----------|-----------|
-| Domain has no dependencies | Business logic is pure and testable |
-| Repository pattern | Abstracts data access, enables mocking |
-| FluentValidation | Declarative validation rules |
-| Separate test projects | Unit tests fast, integration tests realistic |
-| React frontend | Modern SPA with TypeScript safety |
-
-## API Endpoints
+### API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/products` | List products (paginated, filterable) |
-| GET | `/api/products/{id}` | Get product by ID |
-| POST | `/api/products` | Create product |
-| PUT | `/api/products/{id}` | Update product |
-| DELETE | `/api/products/{id}` | Delete product |
-| GET | `/api/categories` | List categories |
-| POST | `/api/categories` | Create category |
+| GET | /api/products | List products with pagination, search, sorting |
+| GET | /api/products/{id} | Get product by ID |
+| POST | /api/products | Create new product |
+| PUT | /api/products/{id} | Update product |
+| DELETE | /api/products/{id} | Delete product |
+| GET | /api/categories | List all categories |
+| POST | /api/categories | Create category |
+| GET | /health | Health check endpoint |
 
-## Tech Stack
+### Query Parameters
 
-- .NET 9
-- Entity Framework Core 9 (SQLite)
-- FluentValidation
-- xUnit + FluentAssertions + Moq
-- React 19 + TypeScript + Vite
-- Docker
+- `page` (default: 1)
+- `pageSize` (default: 10)
+- `search` - Search by name or description
+- `sortBy` - Sort by name, price, or createdat
+- `sortDescending` (default: false)
+- `categoryId` - Filter by category
 
-## Source Code
+### Business Rules
 
-Full implementation: [`01-clean-architecture-product-api/`](../../01-clean-architecture-product-api/)
+- Product names must be unique
+- Product price must be greater than 0
+- Products must belong to a valid category
+- Category names must be unique
+
+## SOLID Principles
+
+| Principle | Implementation |
+|-----------|----------------|
+| **S**ingle Responsibility | Each service handles one aggregate |
+| **O**pen/Closed | Services extend via interfaces |
+| **L**iskov Substitution | Repository implementations are interchangeable |
+| **I**nterface Segregation | Separate interfaces for Product and Category |
+| **D**ependency Inversion | Domain defines interfaces, Infrastructure implements |
+
+## Getting Started
+
+### Prerequisites
+
+- .NET 9 SDK
+- Docker (optional)
+- Node.js 18+ (for React frontend)
+
+### Running with Docker
+
+```bash
+docker compose up
+```
+
+This starts:
+- API on http://localhost:5000
+- SQL Server on localhost:1433
+- React frontend on http://localhost:3000
+
+### Running Locally
+
+**Backend:**
+```bash
+dotnet restore
+dotnet run --project src/ProductCatalog.API
+```
+
+**Frontend:**
+```bash
+cd frontend/productcatalog-ui
+npm install
+npm run dev
+```
+
+The API runs on http://localhost:5000. Swagger is available at http://localhost:5000/swagger.
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ConnectionStrings__DefaultConnection` | SQL Server connection string | Server=localhost;Database=ProductCatalogDb |
+| `ASPNETCORE_ENVIRONMENT` | Environment name | Development |
+
+## Testing
+
+### Unit Tests
+```bash
+dotnet test tests/ProductCatalog.UnitTests
+```
+
+Tests business logic:
+- FluentValidation rules
+- ProductService operations
+- Result pattern behavior
+- PagedResult calculations
+
+### Integration Tests
+```bash
+dotnet test tests/ProductCatalog.IntegrationTests
+```
+
+Tests API endpoints with in-memory database:
+- CRUD operations
+- HTTP status codes
+- Request/Response contracts
+
+## Key Design Decisions
+
+See [docs/decisions/](docs/decisions/) for Architecture Decision Records:
+
+- **ADR-001**: Clean Architecture adoption
+- **ADR-002**: Result pattern for operations
+- **ADR-003**: FluentValidation for input validation
+
+## Interview Discussion Points
+
+1. **Why Clean Architecture?**
+   - Testability without mocking infrastructure
+   - Business rules are framework-independent
+   - Easy to swap databases or external services
+
+2. **Why Repository Pattern?**
+   - Abstracts data access
+   - Enables unit testing with mocks
+   - Follows Dependency Inversion Principle
+
+3. **Why Result Pattern instead of Exceptions?**
+   - Business rule violations are expected, not exceptional
+   - Clear API response mapping
+   - No performance overhead from exception handling
+
+4. **How would you scale this?**
+   - Add caching layer
+   - Implement CQRS for read/write separation
+   - Add message queue for async operations
+   - Consider microservices for different bounded contexts
+
+## Possible Improvements
+
+- Add authentication/authorization
+- Implement CQRS with MediatR
+- Add Redis caching
+- Implement API versioning
+- Add OpenTelemetry for distributed tracing
+- Add rate limiting
+- Implement soft deletes
+
+## License
+
+MIT License - see [LICENSE](LICENSE)

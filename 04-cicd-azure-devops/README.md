@@ -1,8 +1,6 @@
-# 04 - Azure DevOps CI/CD
+# Azure DevOps CI/CD - Customer API
 
-A Customer Management API demonstrating enterprise-grade CI/CD using Azure DevOps Pipelines.
-
-[← Back to Portfolio](../)
+A production-style .NET 9 Customer Management API demonstrating enterprise CI/CD implementation with Azure DevOps.
 
 ## Overview
 
@@ -63,110 +61,256 @@ graph TB
     style Azure fill:#e8f5e9
 ```
 
-## Pipeline Stages
-
-```mermaid
-graph LR
-    subgraph Stage1["Stage 1: Build"]
-        B1[dotnet restore]
-        B2[dotnet build]
-        B3[dotnet test]
-        B4[dotnet publish]
-    end
-    
-    subgraph Stage2["Stage 2: Docker"]
-        D1[Build Image]
-        D2[Push to ACR]
-    end
-    
-    subgraph Stage3["Stage 3: Deploy Dev"]
-        DV1[Deploy to Dev]
-        DV2[Smoke Tests]
-    end
-    
-    subgraph Stage4["Stage 4: Deploy Staging"]
-        S1[Deploy to Staging]
-        S2[Integration Tests]
-    end
-    
-    subgraph Stage5["Stage 5: Deploy Production"]
-        P1[Approval Gate]
-        P2[Deploy to Prod]
-        P3[Health Check]
-    end
-    
-    Stage1 --> Stage2
-    Stage2 --> Stage3
-    Stage3 --> Stage4
-    Stage4 --> Stage5
-```
-
 ## Project Structure
 
 ```
 03-azure-devops-cicd/
-├── azure-pipelines.yml
+├── azure-pipelines.yml          # Multi-stage pipeline
 ├── src/
 │   └── CustomerApi/
-│       ├── Controllers/
-│       ├── Data/
-│       ├── Models/
-│       └── Program.cs
+│       ├── Controllers/         # API endpoints
+│       ├── Data/                # EF Core DbContext
+│       ├── DTOs/                # Data Transfer Objects
+│       ├── Middleware/           # Exception handling, Correlation ID
+│       └── Models/              # Entities
 ├── tests/
-│   └── CustomerApi.Tests/
-├── Dockerfile
-├── docker-compose.yml
-└── CustomerApi.csproj
+│   └── CustomerApi.Tests/       # Unit tests
+├── docs/
+│   └── decisions/               # ADRs
+├── Dockerfile                   # Multi-stage build
+├── docker-compose.yml           # Local development
+└── README.md
 ```
 
-## Pipeline Configuration
+## Azure DevOps Pipeline
 
-### Variable Groups
-| Group | Purpose |
-|-------|---------|
-| `dev-variables` | Development environment settings |
-| `staging-variables` | Staging environment settings |
-| `prod-variables` | Production environment settings |
-| `docker-variables` | Docker build configuration |
+### Pipeline Stages
 
-### Approval Gates
-| Environment | Gate Type | Approvers |
-|-------------|-----------|-----------|
-| Development | None | Auto-deploy |
-| Staging | Check | Team lead |
-| Production | Approval | Release manager + QA |
+```mermaid
+graph LR
+    Build[Build & Test] --> Docker[Docker Build]
+    Docker --> Dev[Deploy Dev]
+    Dev --> Staging[Deploy Staging]
+    Staging --> Prod[Deploy Prod]
+    Prod --> Verify[Verify]
+    
+    style Build fill:#e3f2fd
+    style Docker fill:#f3e5f5
+    style Dev fill:#e8f5e9
+    style Staging fill:#fff3e0
+    style Prod fill:#fce4ec
+    style Verify fill:#e0f7fa
+```
+
+### Stage Details
+
+#### 1. Build and Test
+- Install .NET SDK
+- Restore NuGet packages
+- Build solution
+- Run unit tests with code coverage
+- Publish test results
+- Create build artifact
+
+#### 2. Docker Build
+- Build Docker image
+- Push to Azure Container Registry
+- Tag with build ID and latest
+
+#### 3. Deploy Development
+- Auto-deploy after Docker build
+- Deploy to Azure Container Apps
+- Run database migrations
+
+#### 4. Deploy Staging
+- Deploy to staging environment
+- Validation testing
+
+#### 5. Deploy Production
+- Requires approval gate
+- Deploy to production environment
+- Blue-green deployment support
+
+#### 6. Post-deployment Verification
+- Health check
+- Smoke tests
+
+### Variables
+
+```yaml
+variables:
+  buildConfiguration: 'Release'
+  dotnetVersion: '9.0.x'
+  azureSubscription: '$(AZURE_SUBSCRIPTION)'
+  containerRegistry: '$(CONTAINER_REGISTRY)'
+  imageRepository: 'customer-api'
+  tag: '$(Build.BuildId)'
+```
+
+### Environments
+
+| Environment | Approval | Auto-deploy |
+|-------------|----------|-------------|
+| Development | None | Yes |
+| Staging | None | Yes |
+| Production | Required | No |
+
+### Mermaid Pipeline Diagram
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant ADO as Azure DevOps
+    participant Build as Build Stage
+    participant Docker as Docker Stage
+    participant DevEnv as Development
+    participant StagingEnv as Staging
+    participant ProdEnv as Production
+
+    Dev->>ADO: Push code
+    ADO->>Build: Trigger pipeline
+    Build->>Build: Build & Test
+    Build->>Docker: Build Docker image
+    Docker->>Docker: Push to ACR
+    Docker->>DevEnv: Deploy to Dev (auto)
+    DevEnv->>StagingEnv: Deploy to Staging (auto)
+    StagingEnv->>ProdEnv: Wait for approval
+    Dev->>ADO: Approve production
+    ADO->>ProdEnv: Deploy to Production
+    ProdEnv->>ADO: Health check
+```
 
 ## Azure Resources
 
-| Resource | Purpose |
-|----------|---------|
-| Azure Container Registry | Docker image storage |
-| Azure Container Apps (Dev) | Development hosting |
-| Azure Container Apps (Staging) | Pre-production testing |
-| Azure Container Apps (Production) | Live hosting |
-| Azure Key Vault | Secrets management |
+### Required Azure Resources
 
-## Key Features
+| Resource | Purpose | SKU |
+|----------|---------|-----|
+| Azure Container Registry | Store Docker images | Basic |
+| Azure Container Apps | Host API | Consumption |
+| Azure SQL Database | Data storage | Basic |
+| Application Insights | Monitoring | Basic |
 
-| Feature | Implementation |
-|---------|---------------|
-| Multi-stage YAML | Single pipeline file for all stages |
-| Variable Groups | Centralized configuration |
-| Approval Gates | Manual approval for production |
-| Docker Build | Multi-stage Dockerfile |
-| Azure Container Apps | Serverless container hosting |
-| Health Checks | Post-deployment verification |
+### Resource Group Structure
 
-## Tech Stack
+```
+rg-customer-api-dev
+├── acr-customer-api
+├── ca-customer-api
+├── sql-customer-api
+└── ai-customer-api
 
-- .NET 9
-- Azure DevOps Pipelines
-- Docker + Azure Container Registry
-- Azure Container Apps
-- Azure Key Vault
-- xUnit + FluentAssertions
-- SQLite
+rg-customer-api-staging
+├── acr-customer-api
+├── ca-customer-api
+├── sql-customer-api
+└── ai-customer-api
 
-## Source Code
+rg-customer-api-prod
+├── acr-customer-api
+├── ca-customer-api
+├── sql-customer-api
+└── ai-customer-api
+```
 
-Full implementation: [`03-azure-devops-cicd/`](../../03-azure-devops-cicd/)
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/customers | List all customers |
+| GET | /api/customers/{id} | Get customer by ID |
+| POST | /api/customers | Create customer |
+| PUT | /api/customers/{id} | Update customer |
+| DELETE | /api/customers/{id} | Soft delete customer |
+| GET | /health | Health check |
+
+## Getting Started
+
+### Prerequisites
+
+- .NET 9 SDK
+- Docker (optional)
+- Azure account (for deployment)
+- Azure DevOps organization
+
+### Local Development
+
+```bash
+# Clone repository
+git clone <repo-url>
+cd 03-azure-devops-cicd
+
+# Run with Docker
+docker compose up
+
+# Or run directly
+dotnet run --project src/CustomerApi
+```
+
+### Azure Setup
+
+1. Create Azure DevOps organization
+2. Create project and import repository
+3. Create service connections
+4. Create variable groups
+5. Create environments (dev, staging, production)
+6. Configure approval gates for production
+
+### Azure Resources Setup
+
+```bash
+# Login to Azure
+az login
+
+# Create resource groups
+az group create --name rg-customer-api-dev --location eastus
+az group create --name rg-customer-api-staging --location eastus
+az group create --name rg-customer-api-prod --location eastus
+
+# Create container registry
+az acr create --resource-group rg-customer-api-dev --name custapiacr --sku Basic
+
+# Create container apps environment
+az containerapp env create --name cae-dev --resource-group rg-customer-api-dev --location eastus
+```
+
+## Interview Discussion Points
+
+1. **Why multi-stage pipeline?**
+   - Separates build from deployment
+   - Different approval requirements per stage
+   - Clear audit trail
+
+2. **Why approval gates?**
+   - Prevents accidental production deployments
+   - Ensures human oversight
+   - Compliance requirement
+
+3. **Why variable groups?**
+   - Centralized configuration
+   - Environment-specific values
+   - Secure variable storage
+
+4. **How to handle secrets?**
+   - Azure DevOps variable groups
+   - Azure Key Vault integration
+   - Never commit to repository
+
+5. **Rollback strategy?**
+   - Keep previous Docker image tagged
+   - Deploy previous version
+   - Database migration rollback
+
+## Possible Improvements
+
+- Add SonarQube integration
+- Add security scanning (OWASP)
+- Add performance testing stage
+- Implement canary deployments
+- Add monitoring and alerting
+- Implement blue-green deployments
+- Add database migration automation
+
+## License
+
+MIT License - see [LICENSE](LICENSE)
