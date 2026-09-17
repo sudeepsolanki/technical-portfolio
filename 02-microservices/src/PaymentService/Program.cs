@@ -4,6 +4,9 @@ using PaymentService.Consumers;
 using PaymentService.Controllers;
 using PaymentService.Data;
 using Shared;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +37,33 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource =>
+    {
+        resource.AddService("PaymentService");
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter("TechnicalPortfolio.PaymentService")
+            .AddPrometheusExporter();
+    })
+     .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri("http://tempo:4317");
+            });
+    });
+
 var app = builder.Build();
+
+app.MapPrometheusScrapingEndpoint();
 
 using (var scope = app.Services.CreateScope())
 {

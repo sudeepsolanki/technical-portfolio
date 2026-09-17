@@ -7,9 +7,13 @@ using OrderService.Saga;
 using OrderService.Services;
 using Shared;
 using Shared.Contracts.Services;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OrderService.Observability;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddSingleton<SagaMetrics>();
 builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")
         ?? "Data Source=orders.db"));
@@ -40,6 +44,31 @@ builder.Services.AddMassTransit(x =>
         cfg.ConfigureEndpoints(context);
     });
 });
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource =>
+    {
+        resource.AddService("OrderService");
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter("TechnicalPortfolio.OrderService")
+            .AddPrometheusExporter();
+    })
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri("http://tempo:4317");
+            });
+    });
+
 builder.Services.AddSharedServices();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -50,6 +79,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+app.MapPrometheusScrapingEndpoint();
 
 using (var scope = app.Services.CreateScope())
 {

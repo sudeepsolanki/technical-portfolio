@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PaymentService.Data;
 using Shared.Contracts.Events;
 using Shared.Idempotency;
+using System.Diagnostics.Metrics;
 
 namespace PaymentService.Consumers;
 
@@ -28,6 +29,14 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedEvent>
     public async Task Consume(ConsumeContext<OrderCreatedEvent> context)
     {
         var message = context.Message;
+        var meter = new Meter("TechnicalPortfolio.PaymentService");
+        var paymentsProcessed = meter.CreateCounter<long>(
+            "payments_processed_total",
+            description: "Total number of payments processed");
+
+        var paymentsSuccessful = meter.CreateCounter<long>(
+            "payments_successful_total",
+            description: "Total number of successful payments");
 
         if (_idempotencyService.IsAlreadyProcessed($"payment-{message.OrderId}"))
         {
@@ -37,7 +46,7 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedEvent>
 
         _logger.LogInformation("Processing payment for order {OrderId}, amount: {Amount}",
             message.OrderId, message.TotalAmount);
-
+        paymentsProcessed.Add(1);
         var payment = new PaymentRecord
         {
             Id = Guid.NewGuid(),
@@ -51,7 +60,7 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedEvent>
 
         _context.Payments.Add(payment);
         await _context.SaveChangesAsync();
-
+        paymentsSuccessful.Add(1);
         _idempotencyService.MarkAsProcessed($"payment-{message.OrderId}");
 
         await _publishEndpoint.Publish(new PaymentProcessedEvent
@@ -89,8 +98,11 @@ public class OrderCompensatedConsumer : IConsumer<OrderCompensatedEvent>
 
     public async Task Consume(ConsumeContext<OrderCompensatedEvent> context)
     {
+        var meter = new Meter("TechnicalPortfolio.PaymentService");
         var message = context.Message;
-
+        var paymentsFailed = meter.CreateCounter<long>(
+            "payments_failed_total",
+            description: "Total number of failed payments");
         if (message.CompensatedStep == "ProcessPayment")
         {
             _logger.LogInformation("Refunding payment for order {OrderId}", message.OrderId);
@@ -100,8 +112,10 @@ public class OrderCompensatedConsumer : IConsumer<OrderCompensatedEvent>
 
             if (payment != null)
             {
+
                 payment.Status = "Refunded";
                 await _context.SaveChangesAsync();
+                paymentsFailed.Add(1);
                 _logger.LogInformation("Payment refunded for order {OrderId}", message.OrderId);
             }
         }

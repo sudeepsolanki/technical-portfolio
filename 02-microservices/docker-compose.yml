@@ -26,9 +26,12 @@ services:
       - ASPNETCORE_URLS=http://+:5001
       - ConnectionStrings__Default=Data Source=/app/products.db
       - RabbitMQ__Host=rabbitmq
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
     depends_on:
       rabbitmq:
         condition: service_healthy
+      tempo:
+        condition: service_started
 
   orderservice:
     build:
@@ -44,12 +47,36 @@ services:
       - RabbitMQ__Host=rabbitmq
       - Services__ProductService=http://productservice:5001
       - Services__PaymentService=http://paymentservice:5003
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
     depends_on:
       rabbitmq:
         condition: service_healthy
       productservice:
         condition: service_started
+      tempo:
+        condition: service_started
 
+
+  # orderservice-debug:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.order.debug
+  #   container_name: orderservice-debug
+  #   ports:
+  #     - "5004:5002"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ASPNETCORE_URLS=http://+:5002
+  #     - ConnectionStrings__Default=Data Source=/app/orders.db
+  #     - RabbitMQ__Host=rabbitmq
+  #     - Services__ProductService=http://productservice:5001
+  #     - Services__PaymentService=http://paymentservice:5003
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     productservice:
+  #       condition: service_started
+     
   paymentservice:
     build:
       context: .
@@ -62,9 +89,13 @@ services:
       - ASPNETCORE_URLS=http://+:5003
       - ConnectionStrings__Default=Data Source=/app/payments.db
       - RabbitMQ__Host=rabbitmq
+      
     depends_on:
       rabbitmq:
         condition: service_healthy
+      tempo:
+          condition: service_started
+
 
   apigateway:
     build:
@@ -76,10 +107,12 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
     depends_on:
       - productservice
       - orderservice
       - paymentservice
+      - tempo
 
   frontend:
     build:
@@ -92,3 +125,36 @@ services:
       - VITE_API_URL=http://localhost:5000
     depends_on:
       - apigateway
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - orderservice
+  
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./monitoring/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+  
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+volumes:
+  grafana-data:

@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "apigateway"
+    metrics_path: /metrics
+    static_configs:
+     - targets: ["apigateway:5000"]
+
+  - job_name: "productservice"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["productservice:5001"]
+
+  - job_name: "orderservice"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["orderservice:5002"]
+
+  - job_name: "paymentservice"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["paymentservice:5003"]
