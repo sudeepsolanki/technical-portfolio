@@ -1,0 +1,59 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--panel);
+}
+
+.app-header h1 {
+  font-size: 1.15rem;
+  letter-spacing: 0.2px;
+}
+
+.app-header__tag {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.panes-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  min-height: 0;
+}
+
+.pane {
+  min-height: 0;
+  min-width: 0;
+}
+
+.pane-upload {
+  border-right: 1px solid var(--border);
+  background-color: var(--panel);
+}
+
+.pane-chat {
+  background-color: var(--bg);
+}
+
+@media (max-width: 900px) {
+  .panes-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    overflow: auto;
+  }
+
+  .pane-upload {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}

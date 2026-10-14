@@ -1,0 +1,73 @@
+<div class="chat">
+  <div class="chat__head">
+    <h2>Retrieval Chat</h2>
+    <p class="chat__subtitle">Ask about your documents. Answers are grounded in the ingested context.</p>
+  </div>
+
+  <div class="chat-history" #scroll>
+    @if (messages().length === 0) {
+      <div class="empty-state">
+        <p class="empty-state__title">No messages yet</p>
+        <p class="empty-state__hint">Ingest a document on the left, then ask a question here.</p>
+      </div>
+    }
+
+    @for (msg of messages(); track $index) {
+      <div class="message" [class.message--user]="msg.sender === 'user'">
+        <div class="bubble">
+          <div class="bubble__label">{{ msg.sender === 'user' ? 'You' : 'Assistant' }}</div>
+          <p class="bubble__text">{{ msg.text }}</p>
+        </div>
+      </div>
+    }
+
+    @if (isAsking()) {
+      <div class="message message--assistant">
+        <div class="bubble bubble--loading">
+          <div class="bubble__label">Assistant</div>
+          <div class="typing"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="chat-scope">
+    <span class="chat-scope__label">Scope:</span>
+    <button
+      type="button"
+      class="scope-chip"
+      [class.scope-chip--on]="documentsStore.selectedCount() === 0"
+      (click)="documentsStore.clear()"
+      title="Search all documents"
+    >All documents</button>
+    @for (doc of documentsStore.documents(); track doc.id) {
+      <button
+        type="button"
+        class="scope-chip"
+        [class.scope-chip--on]="documentsStore.selectedIds().includes(doc.id)"
+        (click)="documentsStore.toggle(doc.id)"
+        title="{{ doc.title }} ({{ doc.chunkCount }} chunks)"
+      >{{ doc.title }} ({{ doc.chunkCount }})</button>
+    } @empty {
+      @if (documentsStore.loading()) {
+        <span class="chat-scope__hint">Loading documents…</span>
+      } @else {
+        <span class="chat-scope__hint">No documents yet — upload one on the left.</span>
+      }
+    }
+  </div>
+
+  <form class="chat-input" (ngSubmit)="askQuestion()">
+    <textarea
+      name="question"
+      rows="2"
+      placeholder="Ask anything about your documents…"
+      [(ngModel)]="currentQuestion"
+      (keydown)="onEnter($event)"
+      [disabled]="isAsking()"
+    ></textarea>
+    <button type="submit" class="btn-primary" [disabled]="!canSend()">
+      {{ isAsking() ? 'Thinking…' : 'Send' }}
+    </button>
+  </form>
+</div>

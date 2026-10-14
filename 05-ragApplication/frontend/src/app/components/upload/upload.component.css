@@ -1,0 +1,251 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.upload {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.upload__head h2 {
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.upload__subtitle {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 16px;
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.dropzone--active {
+  border-color: var(--accent);
+  background-color: var(--panel-2);
+}
+
+.dropzone__icon {
+  font-size: 1.6rem;
+  color: var(--accent);
+}
+
+.dropzone__title {
+  font-weight: 600;
+}
+
+.dropzone__hint {
+  font-size: 0.8rem;
+  color: var(--muted-2);
+}
+
+.dropzone__label {
+  background-color: var(--accent-strong);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropzone__label:hover {
+  background-color: #0369a1;
+}
+
+.dropzone__formats {
+  font-size: 0.7rem;
+  color: var(--muted-2);
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--panel-2);
+  font-size: 0.85rem;
+}
+
+.file-info__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-info__size {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background-color: var(--panel-2);
+  color: var(--muted);
+}
+
+.status--ok {
+  background-color: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.status--err {
+  background-color: var(--err-bg);
+  color: var(--err-text);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.docs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.docs__title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+
+.docs__hint {
+  font-size: 0.8rem;
+  color: var(--muted-2);
+  margin: 0;
+}
+
+.docs__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--panel-2);
+}
+
+.doc__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.doc__title {
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc__meta {
+  font-size: 0.72rem;
+  color: var(--muted-2);
+}
+
+.chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.chip--busy {
+  color: var(--accent);
+  background-color: var(--panel-1);
+  border: 1px solid var(--border);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.chip--err {
+  color: var(--err-text);
+  background-color: var(--err-bg);
+  border: 1px solid var(--err-text);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.doc__delete {
+  flex-shrink: 0;
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  color: var(--err-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.doc__delete:hover:not(:disabled) {
+  border-color: var(--err-text);
+  background-color: var(--err-bg);
+}
+
+.doc__delete:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.upload__foot {
+  margin-top: auto;
+}
+
+.upload__foot-label {
+  font-size: 0.72rem;
+  color: var(--muted-2);
+}

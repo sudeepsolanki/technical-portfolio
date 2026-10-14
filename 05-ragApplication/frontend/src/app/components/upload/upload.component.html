@@ -1,0 +1,89 @@
+<div class="upload">
+  <div class="upload__head">
+    <h2>Document Ingestion</h2>
+    <p class="upload__subtitle">Upload knowledge sources into the vector database.</p>
+  </div>
+
+  <div
+    class="dropzone"
+    [class.dropzone--active]="isDragging()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    <div class="dropzone__icon">⬆</div>
+    <p class="dropzone__title">Drop a file here</p>
+    <p class="dropzone__hint">or</p>
+    <label class="dropzone__label">
+      <span>Browse files</span>
+      <input type="file" hidden (change)="onFileChange($event)" />
+    </label>
+    <p class="dropzone__formats">.txt &middot; .md &middot; .markdown &middot; .csv &middot; .json &middot; .pdf &middot; .xlsx &middot; .xls</p>
+  </div>
+
+  @if (selectedFile()) {
+    <div class="file-info">
+      <span class="file-info__name" title="{{ fileName() }}">{{ fileName() }}</span>
+      <span class="file-info__size">{{ formatSize(fileSize()) }}</span>
+    </div>
+  }
+
+  @if (status()) {
+    <div
+      class="status"
+      [class.status--ok]="statusKind() === 'ok'"
+      [class.status--err]="statusKind() === 'err'"
+    >
+      @if (isUploading()) {
+        <span class="spinner" aria-hidden="true"></span>
+      }
+      <span>{{ status() }}</span>
+    </div>
+  }
+
+  <div class="docs">
+    <h3 class="docs__title">Stored documents ({{ documentsStore.documents().length }})</h3>
+    @if (documentsStore.loading()) {
+      <p class="docs__hint">Loading…</p>
+    } @else if (documentsStore.documents().length === 0) {
+      <p class="docs__hint">No documents yet — drop a file above.</p>
+    } @else {
+      <ul class="docs__list">
+        @for (doc of documentsStore.documents(); track doc.id) {
+          <li class="doc">
+            <div class="doc__main">
+              <span class="doc__title" title="{{ doc.title }}">{{ doc.title }}</span>
+              <span class="doc__meta">
+                @switch (doc.status) {
+                  @case ('ready') {
+                    {{ doc.chunkCount }} chunk{{ doc.chunkCount === 1 ? '' : 's' }}
+                  }
+                  @case ('queued') {
+                    <span class="chip chip--busy">QUEUED</span>
+                  }
+                  @case ('processing') {
+                    <span class="chip chip--busy">PROCESSING… {{ doc.chunksCompleted }} / {{ doc.totalChunks }}</span>
+                  }
+                  @case ('failed') {
+                    <span class="chip chip--err" [title]="doc.error ?? ''">FAILED</span>
+                  }
+                }
+              </span>
+            </div>
+            <button
+              type="button"
+              class="doc__delete"
+              (click)="deleteDocument(doc.id, doc.title)"
+              [disabled]="deletingId() === doc.id"
+              title="Delete this document"
+            >{{ deletingId() === doc.id ? '…' : 'Delete' }}</button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <div class="upload__foot">
+    <span class="upload__foot-label">Chunks are embedded & stored in PostgreSQL + pgvector.</span>
+  </div>
+</div>

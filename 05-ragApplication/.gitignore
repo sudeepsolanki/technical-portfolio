@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+.vscode/
+dist/
+node_modules/
+.angular/
+*.user
+*.suo
+.DS_Store
